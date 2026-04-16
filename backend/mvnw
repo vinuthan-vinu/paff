@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+MAVEN_HOME="${HOME}/.m2/wrapper/dists/apache-maven-3.9.6"
+if [ ! -f "${MAVEN_HOME}/bin/mvn" ]; then
+    echo "Downloading Maven 3.9.6..."
+    mkdir -p "${MAVEN_HOME}"
+    TMP_FILE=$(mktemp)
+    curl -sL "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip" -o "$TMP_FILE"
+    unzip -qo "$TMP_FILE" -d "${HOME}/.m2/wrapper/dists/"
+    rm -f "$TMP_FILE"
+    EXTRACTED="${HOME}/.m2/wrapper/dists/apache-maven-3.9.6"
+    if [ ! -d "$EXTRACTED" ]; then
+        EXTRACTED_DIR=$(ls "${HOME}/.m2/wrapper/dists/" | grep "apache-maven" | head -1)
+        mv "${HOME}/.m2/wrapper/dists/${EXTRACTED_DIR}" "${MAVEN_HOME}"
+    fi
+fi
+exec "${MAVEN_HOME}/bin/mvn" "$@"
