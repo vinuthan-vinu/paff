@@ -5,3 +5,4 @@ target/
 frontend/dist/
 backend/uploads/
 smart-campus-project.zip
+backend/src/main/resources/application.properties

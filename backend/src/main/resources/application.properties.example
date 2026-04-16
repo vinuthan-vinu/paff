@@ -7,8 +7,8 @@ server.port=8080
 
 # --- MySQL Database ---
 spring.datasource.url=jdbc:mysql://localhost:3306/smartcampus
-spring.datasource.username=root
-spring.datasource.password=root1234
+spring.datasource.username=YOUR_DB_USERNAME
+spring.datasource.password=YOUR_DB_PASSWORD_HERE
 spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 
 # --- JPA / Hibernate ---
@@ -29,3 +29,6 @@ app.upload.dir=./uploads
 
 # --- CORS ---
 app.cors.allowed-origins=http://localhost:5173
+
+# --- Google OAuth ---
+spring.security.oauth2.client.registration.google.client-id=821740270628-ria9prpc0dnag8hi4h60mj0lknp6984a.apps.googleusercontent.com
