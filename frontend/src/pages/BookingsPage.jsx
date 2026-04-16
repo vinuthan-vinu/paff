@@ -17,13 +17,17 @@ export default function BookingsPage() {
     facilityId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', expectedAttendees: ''
   });
 
-  const [loadingFacs, setLoadingFacs] = useState(true);
+  useEffect(() => { 
+    loadData(); 
+    const interval = setInterval(() => loadData(true), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    setLoadingFacs(true);
+  const loadData = async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setLoadingFacs(true);
+    }
     try {
       const [bookRes, facRes] = await Promise.allSettled([
         isAdmin() ? getAllBookings() : getMyBookings(),
@@ -44,8 +48,10 @@ export default function BookingsPage() {
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
-      setLoadingFacs(false);
+      if (!silent) {
+        setLoading(false);
+        setLoadingFacs(false);
+      }
     }
   };
 

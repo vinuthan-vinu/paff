@@ -18,10 +18,14 @@ export default function TicketsPage() {
     facilityId: '', category: '', description: '', priority: 'MEDIUM'
   });
 
-  useEffect(() => { loadTickets(); }, []);
+  useEffect(() => { 
+    loadTickets();
+    const interval = setInterval(() => loadTickets(true), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const loadTickets = async () => {
-    try {
+  const loadTickets = async (silent = false) => {
+    if (!silent) setLoading(true);
       const [tickRes, facRes] = await Promise.all([
         isAdmin() ? getAllTickets() : isTechnician() ? getAssignedTickets() : getMyTickets(),
         getAllFacilities(),
@@ -31,7 +35,7 @@ export default function TicketsPage() {
     } catch (err) {
       toast.error('Failed to load tickets');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

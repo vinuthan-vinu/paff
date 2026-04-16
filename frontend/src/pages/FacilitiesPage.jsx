@@ -16,16 +16,20 @@ export default function FacilitiesPage() {
     name: '', type: 'LECTURE_HALL', location: '', capacity: '', description: '', availabilityWindows: '', status: 'ACTIVE'
   });
 
-  useEffect(() => { loadFacilities(); }, []);
+  useEffect(() => { 
+    loadFacilities(); 
+    const interval = setInterval(() => loadFacilities(true), 10000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const loadFacilities = async () => {
-    try {
+  const loadFacilities = async (silent = false) => {
+    if (!silent) setLoading(true);
       const res = await getAllFacilities();
       setFacilities(res.data);
     } catch (err) {
       toast.error('Failed to load facilities');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 

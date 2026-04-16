@@ -14,10 +14,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadDashboard();
+    const intervalId = setInterval(() => loadDashboard(true), 10000); // Auto-refresh for real-time admin sync
+    return () => clearInterval(intervalId);
   }, []);
 
-  const loadDashboard = async () => {
-    try {
+  const loadDashboard = async (silent = false) => {
+    if (!silent) setLoading(true);
       const [facRes, bookRes, tickRes] = await Promise.all([
         getAllFacilities(),
         getAllBookings(),
@@ -38,7 +40,7 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
