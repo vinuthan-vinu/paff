@@ -18,6 +18,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final SimpMessageSendingOperations messagingTemplate;
+    private final com.smartcampus.repository.UserRepository userRepository;
 
     public Notification createNotification(User user, String title, String message, NotificationType type) {
         return createNotification(user, title, message, type, null);
@@ -65,5 +66,12 @@ public class NotificationService {
         }
         notification.setIsRead(true);
         return notificationRepository.save(notification);
+    }
+
+    public void notifyAdmins(String title, String message, NotificationType type, String targetPath) {
+        List<User> admins = userRepository.findByRole(com.smartcampus.model.Role.ADMIN);
+        for (User admin : admins) {
+            createNotification(admin, title, message, type, targetPath);
+        }
     }
 }

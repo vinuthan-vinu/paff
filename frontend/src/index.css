@@ -198,8 +198,16 @@ a:hover {
   white-space: nowrap;
 }
 
-.btn:active {
+.btn:active:not(:disabled):not(.disabled) {
   transform: scale(0.97);
+}
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(80%);
 }
 
 .btn-primary {

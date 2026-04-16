@@ -20,3 +20,4 @@ export const addComment = (ticketId, content) => API.post(`/tickets/${ticketId}/
 export const getComments = (ticketId) => API.get(`/tickets/${ticketId}/comments`);
 export const updateComment = (commentId, content) => API.put(`/comments/${commentId}`, { content });
 export const deleteComment = (commentId) => API.delete(`/comments/${commentId}`);
+export const deleteTicket = (id) => API.delete(`/tickets/${id}`);

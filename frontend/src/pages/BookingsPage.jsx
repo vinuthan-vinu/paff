@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { getAllBookings, getMyBookings, createBooking, approveBooking, rejectBooking, cancelBooking } from '../api/bookingApi';
 import { getAllFacilities } from '../api/facilityApi';
-import { HiOutlinePlus, HiOutlineCheck, HiOutlineX, HiOutlineBan } from 'react-icons/hi';
+import { HiOutlinePlus, HiOutlineCheck, HiOutlineX, HiOutlineBan, HiOutlineTrash } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { useAdminRealtimeRefresh } from '../hooks/useAdminRealtimeRefresh';
 
@@ -120,6 +120,15 @@ export default function BookingsPage() {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to cancel'); }
   };
 
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to permanently delete this booking?')) return;
+    try {
+      await import('../api/bookingApi').then(api => api.deleteBooking(id));
+      toast.success('Booking deleted');
+      loadData();
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to delete'); }
+  };
+
   const statusBadge = (status) => {
     const cls = status.toLowerCase().replace('_', '-');
     return <span className={`badge badge-${cls}`}>{status}</span>;
@@ -173,19 +182,31 @@ export default function BookingsPage() {
                   <td>{statusBadge(b.status)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                      {isAdmin && b.status === 'PENDING' && (
-                        <>
-                          <button className="btn btn-success btn-sm" onClick={() => handleApprove(b.id)} title="Approve">
-                            <HiOutlineCheck />
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => setRejectModal(b.id)} title="Reject">
-                            <HiOutlineX />
-                          </button>
-                        </>
-                      )}
-                      {!isAdmin && b.status === 'APPROVED' && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleCancel(b.id)}>
-                          <HiOutlineBan /> Cancel
+                      <button 
+                        className={`btn btn-success btn-sm`}
+                        disabled={!isAdmin} 
+                        onClick={() => handleApprove(b.id)} 
+                        title="Approve"
+                      >
+                        <HiOutlineCheck /> Approve
+                      </button>
+                      <button 
+                        className={`btn btn-danger btn-sm`}
+                        disabled={!isAdmin} 
+                        onClick={() => setRejectModal(b.id)} 
+                        title="Reject"
+                      >
+                        <HiOutlineX /> Reject
+                      </button>
+                      <button 
+                        className={`btn btn-secondary btn-sm`}
+                        onClick={() => handleCancel(b.id)}
+                      >
+                        <HiOutlineBan /> Cancel
+                      </button>
+                      {isAdmin && (
+                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(b.id)} title="Delete">
+                          <HiOutlineTrash /> Delete
                         </button>
                       )}
                     </div>

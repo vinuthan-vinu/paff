@@ -32,7 +32,7 @@ const API_BASE_URL = 'http://localhost:8080';
 
 export default function TicketsPage() {
   const { user, isAdmin, isTechnician, loading: loadingAuth } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,14 +57,23 @@ export default function TicketsPage() {
     }
 
     try {
-      const [ticketResponse, facilityResponse] = await Promise.all([
+      const [ticketResult, facilityResult] = await Promise.allSettled([
         isAdmin ? getAllTickets() : isTechnician ? getAssignedTickets() : getMyTickets(),
-        getAllFacilities({ status: 'ACTIVE' }),
+        getAllFacilities(),
       ]);
 
-      setTickets(ticketResponse.data);
-      setFacilities(facilityResponse.data);
-    } catch {
+      if (ticketResult.status === 'fulfilled') {
+        setTickets(ticketResult.value.data);
+      } else {
+        console.error('Tickets error:', ticketResult.reason);
+        toast.error('Failed to load tickets: ' + (ticketResult.reason?.response?.data?.message || ticketResult.reason?.message || 'Unknown error'));
+      }
+
+      if (facilityResult.status === 'fulfilled') {
+        setFacilities(facilityResult.value.data.filter(f => f.status === 'ACTIVE'));
+      }
+    } catch (err) {
+      console.error('Load error:', err);
       toast.error('Failed to load tickets');
     } finally {
       if (!silent) {
@@ -86,11 +95,16 @@ export default function TicketsPage() {
 
   const openTicketDetail = useCallback(async (ticketId) => {
     try {
+      if (searchParams.get('ticket') !== String(ticketId)) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.set('ticket', ticketId);
+        setSearchParams(nextParams);
+      }
       await refreshSelectedTicket(ticketId);
     } catch {
       toast.error('Failed to load ticket details');
     }
-  }, [refreshSelectedTicket]);
+  }, [refreshSelectedTicket, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!loadingAuth) {
@@ -102,20 +116,36 @@ export default function TicketsPage() {
   }, [loadTickets, loadingAuth, user]);
 
   useEffect(() => {
-    const ticketId = Number(searchParams.get('ticket'));
-    if (!ticketId || loading) {
+    const ticketParam = searchParams.get('ticket');
+    
+    // If there's no ticket in the URL, make sure the modal is closed
+    if (!ticketParam) {
+      if (selectedTicket) {
+        setSelectedTicket(null);
+      }
       return;
     }
 
+    if (loading) return;
+
+    const ticketId = Number(ticketParam);
+    
+    // If the modal is already open for this ticket ID, do nothing
     if (selectedTicket?.id === ticketId) {
       return;
     }
 
+    // Only load if the ticket actually exists in our list
     const ticketFromList = tickets.find((ticket) => ticket.id === ticketId);
     if (ticketFromList) {
-      openTicketDetail(ticketId);
+      refreshSelectedTicket(ticketId).catch(() => {
+        toast.error('Failed to load ticket details');
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('ticket');
+        setSearchParams(nextParams);
+      });
     }
-  }, [searchParams, tickets, loading, selectedTicket, openTicketDetail]);
+  }, [searchParams, tickets, loading, selectedTicket, refreshSelectedTicket, setSearchParams]);
 
   const handleCreate = async (event) => {
     event.preventDefault();
@@ -219,6 +249,25 @@ export default function TicketsPage() {
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to close ticket');
+    }
+  };
+
+  const handleDeleteTicket = async (ticketId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this ticket?')) return;
+    try {
+      await import('../api/ticketApi').then(api => api.deleteTicket(ticketId));
+      toast.success('Ticket deleted');
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket(null);
+        if (searchParams.has('ticket')) {
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.delete('ticket');
+          setSearchParams(nextParams);
+        }
+      }
+      await loadTickets();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete ticket');
     }
   };
 
@@ -371,6 +420,11 @@ export default function TicketsPage() {
                           Close
                         </button>
                       )}
+                      {isAdmin && (
+                        <button className="btn btn-danger btn-sm" onClick={() => handleDeleteTicket(ticket.id)} title="Delete">
+                          <HiOutlineTrash />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -470,7 +524,14 @@ export default function TicketsPage() {
       )}
 
       {selectedTicket && (
-        <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
+        <div className="modal-overlay" onClick={() => {
+          setSelectedTicket(null);
+          if (searchParams.has('ticket')) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('ticket');
+            setSearchParams(nextParams);
+          }
+        }}>
           <div
             className="modal-content"
             style={{ maxWidth: 720 }}
@@ -478,7 +539,14 @@ export default function TicketsPage() {
           >
             <div className="modal-header">
               <h2 className="modal-title">Ticket #{selectedTicket.id}</h2>
-              <button className="modal-close" onClick={() => setSelectedTicket(null)}>
+              <button className="modal-close" onClick={() => {
+                setSelectedTicket(null);
+                if (searchParams.has('ticket')) {
+                  const nextParams = new URLSearchParams(searchParams);
+                  nextParams.delete('ticket');
+                  setSearchParams(nextParams);
+                }
+              }}>
                 <HiOutlineX />
               </button>
             </div>

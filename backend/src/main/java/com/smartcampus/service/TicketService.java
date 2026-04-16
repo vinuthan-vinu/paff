@@ -42,6 +42,15 @@ public class TicketService {
 
         ticket.getStatusHistory().add(buildHistoryEntry(ticket, TicketStatus.OPEN, "Ticket created", reporter));
         Ticket savedTicket = ticketRepository.save(ticket);
+        
+        // Notify Admins
+        notificationService.notifyAdmins(
+                "New Ticket Reported",
+                "Ticket #" + savedTicket.getId() + " (" + savedTicket.getCategory() + ") was created by " + reporter.getName(),
+                NotificationType.TICKET_UPDATE,
+                "/admin"
+        );
+        
         adminUpdateService.broadcast("TICKET", "CREATED", savedTicket.getId());
         return savedTicket;
     }
@@ -236,6 +245,16 @@ public class TicketService {
         Ticket updatedTicket = ticketRepository.save(ticket);
         adminUpdateService.broadcast("ATTACHMENT", "CREATED", updatedTicket.getId());
         return updatedTicket;
+    }
+
+    @Transactional
+    public void deleteTicket(Long id, User currentUser) {
+        if (currentUser.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Only admins can delete tickets");
+        }
+        Ticket ticket = getTicketById(id, currentUser);
+        ticketRepository.delete(ticket);
+        adminUpdateService.broadcast("TICKET", "DELETED", id);
     }
 
     /**

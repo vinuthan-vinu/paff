@@ -14,4 +14,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByGoogleId(String googleId);
 
     boolean existsByEmail(String email);
+
+    java.util.List<User> findByRole(com.smartcampus.model.Role role);
 }

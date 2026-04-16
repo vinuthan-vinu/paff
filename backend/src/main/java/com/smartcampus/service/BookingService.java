@@ -76,6 +76,15 @@ public class BookingService {
                 .build();
 
         booking = bookingRepository.save(booking);
+        
+        // Notify Admins
+        notificationService.notifyAdmins(
+                "New Booking Request",
+                user.getName() + " requested " + facility.getName() + " for " + dto.getBookingDate(),
+                NotificationType.SYSTEM_ALERT,
+                "/admin"
+        );
+        
         adminUpdateService.broadcast("BOOKING", "CREATED", booking.getId());
         return mapToResponse(booking);
     }
@@ -116,7 +125,6 @@ public class BookingService {
     @Transactional
     public BookingResponseDTO approveBooking(Long id) {
         Booking booking = findBookingOrThrow(id);
-        validatePendingStatus(booking);
 
         booking.setStatus(BookingStatus.APPROVED);
         booking = bookingRepository.save(booking);
@@ -138,7 +146,6 @@ public class BookingService {
     @Transactional
     public BookingResponseDTO rejectBooking(Long id, String reason) {
         Booking booking = findBookingOrThrow(id);
-        validatePendingStatus(booking);
 
         booking.setStatus(BookingStatus.REJECTED);
         booking.setRejectionReason(reason);
@@ -162,14 +169,20 @@ public class BookingService {
         Booking booking = findBookingOrThrow(id);
         validateBookingAccess(booking, currentUser);
 
-        if (booking.getStatus() != BookingStatus.APPROVED) {
-            throw new IllegalArgumentException("Only approved bookings can be cancelled");
-        }
-
         booking.setStatus(BookingStatus.CANCELLED);
         booking = bookingRepository.save(booking);
         adminUpdateService.broadcast("BOOKING", "CANCELLED", booking.getId());
         return mapToResponse(booking);
+    }
+
+    @Transactional
+    public void deleteBooking(Long id, User currentUser) {
+        if (currentUser.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Only admins can delete bookings");
+        }
+        Booking booking = findBookingOrThrow(id);
+        bookingRepository.delete(booking);
+        adminUpdateService.broadcast("BOOKING", "DELETED", id);
     }
 
     // --- Helper Methods ---
@@ -177,12 +190,6 @@ public class BookingService {
     private Booking findBookingOrThrow(Long id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", id));
-    }
-
-    private void validatePendingStatus(Booking booking) {
-        if (booking.getStatus() != BookingStatus.PENDING) {
-            throw new IllegalArgumentException("Only pending bookings can be approved or rejected");
-        }
     }
 
     private void validateBookingAccess(Booking booking, User currentUser) {

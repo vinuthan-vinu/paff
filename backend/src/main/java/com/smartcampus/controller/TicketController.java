@@ -133,4 +133,12 @@ public class TicketController {
         ticketService.deleteComment(commentId, user);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        ticketService.deleteTicket(id, user);
+        return ResponseEntity.noContent().build();
+    }
 }
