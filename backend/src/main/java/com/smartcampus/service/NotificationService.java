@@ -5,7 +5,7 @@ import com.smartcampus.model.NotificationType;
 import com.smartcampus.model.User;
 import com.smartcampus.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final SimpMessageSendingOperations messagingTemplate;
 
     public Notification createNotification(User user, String title, String message, NotificationType type) {
         Notification notification = Notification.builder()
