@@ -66,7 +66,7 @@ export default function DashboardPage() {
 
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-card-icon" style={{ color: 'var(--accent-cyan)' }}>
+          <div className="stat-card-icon" style={{ color: 'var(--accent-orange)' }}>
             <HiOutlineOfficeBuilding />
           </div>
           <div className="stat-value">{stats.facilities}</div>
@@ -80,14 +80,14 @@ export default function DashboardPage() {
           <div className="stat-label">Total Bookings</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-icon" style={{ color: 'var(--accent-violet)' }}>
+          <div className="stat-card-icon" style={{ color: 'var(--accent-orange)' }}>
             <HiOutlineTicket />
           </div>
           <div className="stat-value">{stats.tickets}</div>
           <div className="stat-label">Support Tickets</div>
         </div>
         <div className="stat-card">
-          <div className="stat-card-icon" style={{ color: 'var(--accent-amber)' }}>
+          <div className="stat-card-icon" style={{ color: 'var(--primary-500)' }}>
             <HiOutlineUsers />
           </div>
           <div className="stat-value">{stats.pending}</div>

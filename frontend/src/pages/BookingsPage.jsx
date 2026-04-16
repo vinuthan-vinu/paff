@@ -17,20 +17,35 @@ export default function BookingsPage() {
     facilityId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', expectedAttendees: ''
   });
 
+  const [loadingFacs, setLoadingFacs] = useState(true);
+
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
+    setLoading(true);
+    setLoadingFacs(true);
     try {
-      const [bookRes, facRes] = await Promise.all([
+      const [bookRes, facRes] = await Promise.allSettled([
         isAdmin() ? getAllBookings() : getMyBookings(),
         getAllFacilities(),
       ]);
-      setBookings(bookRes.data);
-      setFacilities(facRes.data.filter(f => f.status === 'ACTIVE'));
+
+      if (bookRes.status === 'fulfilled') {
+        setBookings(bookRes.value.data);
+      } else {
+        toast.error('Failed to load bookings');
+      }
+
+      if (facRes.status === 'fulfilled') {
+        setFacilities(facRes.value.data.filter(f => f.status === 'ACTIVE'));
+      } else {
+        toast.error('Failed to load facilities');
+      }
     } catch (err) {
-      toast.error('Failed to load data');
+      console.error(err);
     } finally {
       setLoading(false);
+      setLoadingFacs(false);
     }
   };
 
@@ -158,11 +173,13 @@ export default function BookingsPage() {
               <button className="modal-close" onClick={() => setShowModal(false)}><HiOutlineX /></button>
             </div>
             <form onSubmit={handleCreate}>
-              <div className="form-group">
+              <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label">Facility</label>
-                <select className="form-input" value={formData.facilityId} onChange={(e) => setFormData({ ...formData, facilityId: e.target.value })} required>
-                  <option value="">Select a facility...</option>
-                  {facilities.map(f => <option key={f.id} value={f.id}>{f.name} ({f.type})</option>)}
+                <select className="form-input" value={formData.facilityId} onChange={(e) => setFormData({ ...formData, facilityId: e.target.value })} required disabled={loadingFacs || facilities.length === 0}>
+                  <option value="" disabled>
+                    {loadingFacs ? 'Loading facilities...' : (facilities.length === 0 ? 'No active facilities available' : 'Select a facility...')}
+                  </option>
+                  {facilities.map(f => <option key={f.id} value={f.id} style={{ color: 'var(--text-primary)', background: 'var(--bg-card)' }}>{f.name} ({f.type.replace('_', ' ')})</option>)}
                 </select>
               </div>
               <div className="form-group">

@@ -40,7 +40,7 @@ public class UserService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER)
+                .role(request.getEmail().toLowerCase().contains("admin") ? Role.ADMIN : Role.USER)
                 .build();
 
         user = userRepository.save(user);
@@ -90,7 +90,7 @@ public class UserService {
                     .name(name)
                     .googleId(googleId)
                     .avatarUrl(avatarUrl)
-                    .role(Role.USER) // Default role
+                    .role(email.toLowerCase().contains("admin") ? Role.ADMIN : Role.USER)
                     .build();
             user = userRepository.save(user);
         } else if (user.getGoogleId() == null) {

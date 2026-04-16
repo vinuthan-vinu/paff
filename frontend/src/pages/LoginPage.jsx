@@ -50,11 +50,15 @@ export default function LoginPage() {
   };
 
   // Mock google login for local development without actual client id
-  const handleMockGoogleLogin = async () => {
+  const handleMockGoogleLogin = async (role = 'student') => {
     setLoading(true);
     try {
       const randomId = Math.floor(Math.random() * 1000);
-      const res = await apiGoogleLogin(`mock-google-token-student${randomId}@gmail.com`);
+      const email = role === 'admin' 
+        ? `mock-google-token-admin${randomId}@university.edu` 
+        : `mock-google-token-student${randomId}@gmail.com`;
+        
+      const res = await apiGoogleLogin(email);
       login(res.data);
       toast.success(`Welcome via Google, ${res.data.name}!`);
       navigate('/');
@@ -140,9 +144,14 @@ export default function LoginPage() {
             theme="filled_black"
           />
           {/* Using a mock button since standard Google Login requires configured localhost origins */}
-          <button className="btn btn-secondary btn-sm" onClick={handleMockGoogleLogin} style={{ width: '100%' }}>
-            Mock Google Sign-In (Dev Only)
-          </button>
+          <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => handleMockGoogleLogin('student')} style={{ flex: 1 }} type="button">
+              Mock Student (Dev)
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={() => handleMockGoogleLogin('admin')} style={{ flex: 1, border: '1px solid var(--accent-orange)' }} type="button">
+              Mock Admin (Dev)
+            </button>
+          </div>
         </div>
 
         <div className="login-footer">

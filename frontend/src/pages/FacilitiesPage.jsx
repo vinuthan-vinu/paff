@@ -98,24 +98,42 @@ export default function FacilitiesPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-          <HiOutlineSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+      <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 400 }}>
+          <HiOutlineSearch style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
           <input
             className="form-input"
-            style={{ paddingLeft: 36 }}
+            style={{ paddingLeft: 42, borderRadius: 'var(--radius-full)', background: 'var(--bg-secondary)', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
             placeholder="Search facilities..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className="form-input" style={{ width: 180 }} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-          <option value="">All Types</option>
-          <option value="LECTURE_HALL">Lecture Hall</option>
-          <option value="LAB">Lab</option>
-          <option value="MEETING_ROOM">Meeting Room</option>
-          <option value="EQUIPMENT">Equipment</option>
-        </select>
+        
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+          {['', 'LECTURE_HALL', 'LAB', 'MEETING_ROOM', 'EQUIPMENT'].map(type => (
+            <button
+              key={type}
+              onClick={() => setFilterType(type)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '50px',
+                border: filterType === type ? '1px solid var(--primary-900)' : '1px solid var(--border-color)',
+                backgroundColor: filterType === type ? 'var(--primary-900)' : 'white',
+                color: filterType === type ? 'white' : 'var(--text-secondary)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease',
+                textTransform: 'uppercase',
+                boxShadow: filterType !== type ? '0 2px 4px rgba(0,0,0,0.02)' : 'none'
+              }}
+            >
+              {type === '' ? 'ALL FACILITIES' : typeLabels[type].split(' ')[1] + (typeLabels[type].split(' ')[2] ? ' ' + typeLabels[type].split(' ')[2] : '')}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Facility Cards Grid */}
