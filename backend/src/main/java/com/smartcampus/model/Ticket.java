@@ -1,5 +1,6 @@
 package com.smartcampus.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "tickets")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
@@ -43,6 +45,10 @@ public class Ticket {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String description;
 
+    @NotBlank(message = "Contact details are required")
+    @Column(nullable = false)
+    private String contactDetails;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -66,6 +72,11 @@ public class Ticket {
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Comment> comments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
+    @Builder.Default
+    private List<TicketStatusHistory> statusHistory = new ArrayList<>();
 
     @CreationTimestamp
     @Column(updatable = false)

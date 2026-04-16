@@ -8,12 +8,14 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ticket_attachments")
+@Table(name = "ticket_status_history")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class TicketAttachment {
+public class TicketStatusHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,13 +26,19 @@ public class TicketAttachment {
     @JoinColumn(name = "ticket_id", nullable = false)
     private Ticket ticket;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String fileUrl;
+    private TicketStatus status;
 
-    @Column(nullable = false)
-    private String fileName;
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+
+    @JsonIgnoreProperties({"password", "googleId"})
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "changed_by_id")
+    private User changedBy;
 
     @CreationTimestamp
     @Column(updatable = false)
-    private LocalDateTime uploadedAt;
+    private LocalDateTime createdAt;
 }

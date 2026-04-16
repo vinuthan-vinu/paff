@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getNotifications, markAsRead } from '../api/notificationApi';
-import { HiOutlineBell, HiOutlineCheck } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineChevronRight } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => { loadNotifications(); }, []);
 
@@ -17,10 +19,17 @@ export default function NotificationsPage() {
     finally { setLoading(false); }
   };
 
-  const handleMarkRead = async (id) => {
+  const handleOpenNotification = async (notification) => {
     try {
-      await markAsRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+      if (!notification.isRead) {
+        await markAsRead(notification.id);
+      }
+      setNotifications(prev => prev.map((item) => (
+        item.id === notification.id ? { ...item, isRead: true } : item
+      )));
+      if (notification.targetPath) {
+        navigate(notification.targetPath);
+      }
     } catch { toast.error('Failed'); }
   };
 
@@ -51,11 +60,13 @@ export default function NotificationsPage() {
             <div
               key={n.id}
               className="glass-card"
+              onClick={() => handleOpenNotification(n)}
               style={{
                 padding: 'var(--space-md) var(--space-lg)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 opacity: n.isRead ? 0.6 : 1,
                 borderLeft: n.isRead ? 'none' : '3px solid var(--primary-500)',
+                cursor: 'pointer',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
@@ -68,11 +79,9 @@ export default function NotificationsPage() {
                   </div>
                 </div>
               </div>
-              {!n.isRead && (
-                <button className="btn btn-secondary btn-sm" onClick={() => handleMarkRead(n.id)}>
-                  <HiOutlineCheck /> Read
-                </button>
-              )}
+              <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                <HiOutlineChevronRight />
+              </span>
             </div>
           ))}
         </div>

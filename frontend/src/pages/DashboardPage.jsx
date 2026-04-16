@@ -1,25 +1,22 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 import { getAllFacilities } from '../api/facilityApi';
 import { getAllBookings } from '../api/bookingApi';
 import { getAllTickets } from '../api/ticketApi';
 import { HiOutlineOfficeBuilding, HiOutlineCalendar, HiOutlineTicket, HiOutlineUsers } from 'react-icons/hi';
+import { useAdminRealtimeRefresh } from '../hooks/useAdminRealtimeRefresh';
 import './DashboardPage.css';
 
 export default function DashboardPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: loadingAuth } = useAuth();
   const [stats, setStats] = useState({ facilities: 0, bookings: 0, tickets: 0, pending: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDashboard();
-    const intervalId = setInterval(() => loadDashboard(true), 10000); // Auto-refresh for real-time admin sync
-    return () => clearInterval(intervalId);
-  }, []);
-
-  const loadDashboard = async (silent = false) => {
+  const loadDashboard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
+    try {
       const [facRes, bookRes, tickRes] = await Promise.all([
         getAllFacilities(),
         getAllBookings(),
@@ -42,7 +39,18 @@ export default function DashboardPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  };
+  }, []);
+
+  useAdminRealtimeRefresh(() => loadDashboard(true), isAdmin);
+
+  useEffect(() => {
+    if (!loadingAuth) {
+      loadDashboard();
+      const intervalId = setInterval(() => loadDashboard(true), 5000); 
+      return () => clearInterval(intervalId);
+    }
+    return undefined;
+  }, [loadDashboard, loadingAuth, user]);
 
   const statusBadge = (status) => {
     const cls = status.toLowerCase().replace('_', '-');
@@ -64,6 +72,11 @@ export default function DashboardPage() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Welcome back, {user?.name} 👋</p>
         </div>
+        {isAdmin && (
+          <Link className="btn btn-primary" to="/admin">
+            Open Admin Dashboard
+          </Link>
+        )}
       </div>
 
       <div className="stats-grid">

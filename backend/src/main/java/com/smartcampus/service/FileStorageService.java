@@ -29,6 +29,8 @@ public class FileStorageService {
      * Stores a file and returns the generated filename.
      */
     public String storeFile(MultipartFile file) {
+        validateImage(file);
+
         String originalName = file.getOriginalFilename();
         String extension = "";
         if (originalName != null && originalName.contains(".")) {
@@ -51,5 +53,16 @@ public class FileStorageService {
      */
     public Path getFilePath(String fileName) {
         return uploadDir.resolve(fileName).normalize();
+    }
+
+    public void validateImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is required");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files are allowed");
+        }
     }
 }

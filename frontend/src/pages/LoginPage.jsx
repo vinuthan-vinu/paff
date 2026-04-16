@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 import { loginUser, registerUser, googleLogin as apiGoogleLogin } from '../api/authApi';
 import { GoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
@@ -27,7 +27,7 @@ export default function LoginPage() {
 
       login(res.data);
       toast.success(`Welcome${isRegister ? '' : ' back'}, ${res.data.name}!`);
-      navigate('/');
+      navigate(res.data.role === 'ADMIN' ? '/admin' : '/');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Something went wrong');
     } finally {
@@ -41,8 +41,8 @@ export default function LoginPage() {
       const res = await apiGoogleLogin(credentialResponse.credential);
       login(res.data);
       toast.success(`Welcome, ${res.data.name}!`);
-      navigate('/');
-    } catch (err) {
+      navigate(res.data.role === 'ADMIN' ? '/admin' : '/');
+    } catch {
       toast.error('Google Sign-In failed.');
     } finally {
       setLoading(false);
@@ -61,8 +61,8 @@ export default function LoginPage() {
       const res = await apiGoogleLogin(email);
       login(res.data);
       toast.success(`Welcome via Google, ${res.data.name}!`);
-      navigate('/');
-    } catch (err) {
+      navigate(res.data.role === 'ADMIN' ? '/admin' : '/');
+    } catch {
       toast.error('Mock Google Sign-In failed.');
     } finally {
       setLoading(false);

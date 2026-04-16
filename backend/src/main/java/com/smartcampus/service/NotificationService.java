@@ -1,11 +1,13 @@
 package com.smartcampus.service;
 
+import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.Notification;
 import com.smartcampus.model.NotificationType;
 import com.smartcampus.model.User;
 import com.smartcampus.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,12 +20,17 @@ public class NotificationService {
     private final SimpMessageSendingOperations messagingTemplate;
 
     public Notification createNotification(User user, String title, String message, NotificationType type) {
+        return createNotification(user, title, message, type, null);
+    }
+
+    public Notification createNotification(User user, String title, String message, NotificationType type, String targetPath) {
         Notification notification = Notification.builder()
                 .user(user)
                 .title(title)
                 .message(message)
                 .type(type)
                 .isRead(false)
+                .targetPath(targetPath)
                 .build();
 
         notification = notificationRepository.save(notification);
@@ -50,9 +57,12 @@ public class NotificationService {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
-    public Notification markAsRead(Long notificationId) {
+    public Notification markAsRead(Long notificationId, User currentUser) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Notification", "id", notificationId));
+        if (!notification.getUser().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("You do not have access to this notification");
+        }
         notification.setIsRead(true);
         return notificationRepository.save(notification);
     }

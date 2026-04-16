@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 import { getAllBookings, getMyBookings, createBooking, approveBooking, rejectBooking, cancelBooking } from '../api/bookingApi';
 import { getAllFacilities } from '../api/facilityApi';
 import { HiOutlinePlus, HiOutlineCheck, HiOutlineX, HiOutlineBan } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import { useAdminRealtimeRefresh } from '../hooks/useAdminRealtimeRefresh';
 
 export default function BookingsPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: loadingAuth } = useAuth();
+  const [searchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingFacs, setLoadingFacs] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -17,20 +21,14 @@ export default function BookingsPage() {
     facilityId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', expectedAttendees: ''
   });
 
-  useEffect(() => { 
-    loadData(); 
-    const interval = setInterval(() => loadData(true), 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadData = async (silent = false) => {
+  const loadData = useCallback(async (silent = false) => {
     if (!silent) {
       setLoading(true);
       setLoadingFacs(true);
     }
     try {
       const [bookRes, facRes] = await Promise.allSettled([
-        isAdmin() ? getAllBookings() : getMyBookings(),
+        isAdmin ? getAllBookings() : getMyBookings(),
         getAllFacilities(),
       ]);
 
@@ -45,18 +43,32 @@ export default function BookingsPage() {
       } else {
         toast.error('Failed to load facilities');
       }
-    } catch (err) {
-      console.error(err);
     } finally {
       if (!silent) {
         setLoading(false);
         setLoadingFacs(false);
       }
     }
-  };
+  }, [isAdmin]);
+
+  useAdminRealtimeRefresh(() => loadData(true), isAdmin);
+
+  useEffect(() => { 
+    if (!loadingAuth) {
+      loadData(); 
+      const interval = setInterval(() => loadData(true), 5000);
+      return () => clearInterval(interval);
+    }
+    return undefined;
+  }, [loadData, loadingAuth, user]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    if (formData.endTime <= formData.startTime) {
+      toast.error('End time must be after start time');
+      return;
+    }
+
     try {
       await createBooking({
         ...formData,
@@ -65,6 +77,9 @@ export default function BookingsPage() {
       });
       toast.success('Booking request submitted!');
       setShowModal(false);
+      setFormData({
+        facilityId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', expectedAttendees: '',
+      });
       loadData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Booking failed');
@@ -76,17 +91,24 @@ export default function BookingsPage() {
       await approveBooking(id);
       toast.success('Booking approved');
       loadData();
-    } catch (err) { toast.error('Failed to approve'); }
+    } catch {
+      toast.error('Failed to approve');
+    }
   };
 
   const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      toast.error('Rejection reason is required');
+      return;
+    }
+
     try {
-      await rejectBooking(rejectModal, rejectReason);
+      await rejectBooking(rejectModal, rejectReason.trim());
       toast.success('Booking rejected');
       setRejectModal(null);
       setRejectReason('');
       loadData();
-    } catch (err) { toast.error('Failed to reject'); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to reject'); }
   };
 
   const handleCancel = async (id) => {
@@ -95,7 +117,7 @@ export default function BookingsPage() {
       await cancelBooking(id);
       toast.success('Booking cancelled');
       loadData();
-    } catch (err) { toast.error('Failed to cancel'); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to cancel'); }
   };
 
   const statusBadge = (status) => {
@@ -103,12 +125,14 @@ export default function BookingsPage() {
     return <span className={`badge badge-${cls}`}>{status}</span>;
   };
 
+  const highlightedBookingId = Number(searchParams.get('booking'));
+
   return (
     <div className="page-container">
       <div className="page-header">
         <div>
           <h1 className="page-title">Bookings</h1>
-          <p className="page-subtitle">{isAdmin() ? 'Manage all booking requests' : 'Your booking requests'}</p>
+          <p className="page-subtitle">{isAdmin ? 'Manage all booking requests' : 'Your booking requests'}</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>
           <HiOutlinePlus /> New Booking
@@ -127,7 +151,7 @@ export default function BookingsPage() {
             <thead>
               <tr>
                 <th>Facility</th>
-                {isAdmin() && <th>Requested By</th>}
+                {isAdmin && <th>Requested By</th>}
                 <th>Date</th>
                 <th>Time</th>
                 <th>Purpose</th>
@@ -137,16 +161,19 @@ export default function BookingsPage() {
             </thead>
             <tbody>
               {bookings.map((b) => (
-                <tr key={b.id}>
+                <tr
+                  key={b.id}
+                  style={b.id === highlightedBookingId ? { background: 'rgba(242, 108, 34, 0.08)' } : undefined}
+                >
                   <td style={{ fontWeight: 500 }}>{b.facilityName}</td>
-                  {isAdmin() && <td>{b.userName}</td>}
+                  {isAdmin && <td>{b.userName}</td>}
                   <td>{b.bookingDate}</td>
                   <td>{b.startTime} – {b.endTime}</td>
                   <td style={{ color: 'var(--text-secondary)', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.purpose || '—'}</td>
                   <td>{statusBadge(b.status)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                      {isAdmin() && b.status === 'PENDING' && (
+                      {isAdmin && b.status === 'PENDING' && (
                         <>
                           <button className="btn btn-success btn-sm" onClick={() => handleApprove(b.id)} title="Approve">
                             <HiOutlineCheck />
@@ -156,7 +183,7 @@ export default function BookingsPage() {
                           </button>
                         </>
                       )}
-                      {!isAdmin() && (b.status === 'PENDING' || b.status === 'APPROVED') && (
+                      {!isAdmin && b.status === 'APPROVED' && (
                         <button className="btn btn-secondary btn-sm" onClick={() => handleCancel(b.id)}>
                           <HiOutlineBan /> Cancel
                         </button>
@@ -204,11 +231,11 @@ export default function BookingsPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Purpose</label>
-                <input className="form-input" value={formData.purpose} onChange={(e) => setFormData({ ...formData, purpose: e.target.value })} placeholder="e.g. Team meeting" />
+                <input className="form-input" value={formData.purpose} onChange={(e) => setFormData({ ...formData, purpose: e.target.value })} placeholder="e.g. Team meeting" required />
               </div>
               <div className="form-group">
                 <label className="form-label">Expected Attendees</label>
-                <input className="form-input" type="number" min="1" value={formData.expectedAttendees} onChange={(e) => setFormData({ ...formData, expectedAttendees: e.target.value })} />
+                <input className="form-input" type="number" min="1" value={formData.expectedAttendees} onChange={(e) => setFormData({ ...formData, expectedAttendees: e.target.value })} required />
               </div>
               <button className="btn btn-primary btn-lg" style={{ width: '100%' }} type="submit">Submit Booking</button>
             </form>

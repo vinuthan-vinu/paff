@@ -2,6 +2,8 @@ package com.smartcampus.controller;
 
 import com.smartcampus.dto.BookingRequestDTO;
 import com.smartcampus.dto.BookingResponseDTO;
+import com.smartcampus.dto.ReasonRequestDTO;
+import com.smartcampus.model.BookingStatus;
 import com.smartcampus.model.User;
 import com.smartcampus.service.BookingService;
 import jakarta.validation.Valid;
@@ -12,7 +14,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -22,8 +23,10 @@ public class BookingController {
     private final BookingService bookingService;
 
     @GetMapping
-    public ResponseEntity<List<BookingResponseDTO>> getAllBookings() {
-        return ResponseEntity.ok(bookingService.getAllBookings());
+    public ResponseEntity<List<BookingResponseDTO>> getAllBookings(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) BookingStatus status) {
+        return ResponseEntity.ok(bookingService.getBookingsForUser(user, status));
     }
 
     @GetMapping("/my")
@@ -32,8 +35,10 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BookingResponseDTO> getBookingById(@PathVariable Long id) {
-        return ResponseEntity.ok(bookingService.getBookingById(id));
+    public ResponseEntity<BookingResponseDTO> getBookingById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(bookingService.getBookingById(id, user));
     }
 
     @PostMapping
@@ -44,20 +49,19 @@ public class BookingController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @PatchMapping("/{id}/approve")
+    @RequestMapping(path = "/{id}/approve", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<BookingResponseDTO> approveBooking(@PathVariable Long id) {
         return ResponseEntity.ok(bookingService.approveBooking(id));
     }
 
-    @PatchMapping("/{id}/reject")
+    @RequestMapping(path = "/{id}/reject", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<BookingResponseDTO> rejectBooking(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
-        String reason = body.getOrDefault("reason", "No reason provided");
-        return ResponseEntity.ok(bookingService.rejectBooking(id, reason));
+            @Valid @RequestBody ReasonRequestDTO request) {
+        return ResponseEntity.ok(bookingService.rejectBooking(id, request.getReason()));
     }
 
-    @PatchMapping("/{id}/cancel")
+    @RequestMapping(path = "/{id}/cancel", method = {RequestMethod.PATCH, RequestMethod.PUT})
     public ResponseEntity<BookingResponseDTO> cancelBooking(
             @PathVariable Long id,
             @AuthenticationPrincipal User user) {

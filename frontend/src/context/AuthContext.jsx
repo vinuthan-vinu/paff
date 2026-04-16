@@ -1,19 +1,22 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const AuthContext = createContext(null);
+import { useState } from 'react';
+import AuthContext from './auth-context';
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser && token) {
-      setUser(JSON.parse(storedUser));
+    if (!storedUser) {
+      return null;
     }
-    setLoading(false);
-  }, [token]);
+
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      localStorage.removeItem('user');
+      return null;
+    }
+  });
+  const loading = false;
 
   const login = (authResponse) => {
     localStorage.setItem('token', authResponse.token);
@@ -39,9 +42,9 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const isAdmin = () => user?.role === 'ADMIN';
-  const isTechnician = () => user?.role === 'TECHNICIAN';
-  const isUser = () => user?.role === 'USER';
+  const isAdmin = user?.role === 'ADMIN';
+  const isTechnician = user?.role === 'TECHNICIAN';
+  const isUser = user?.role === 'USER';
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, isAdmin, isTechnician, isUser }}>
@@ -49,9 +52,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be inside AuthProvider');
-  return context;
-};

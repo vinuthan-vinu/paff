@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 
 import java.util.Optional;
@@ -36,13 +37,23 @@ public class TicketServiceTest {
 
     private User reporter;
     private User technician;
+    private User admin;
     private Ticket openTicket;
 
     @BeforeEach
     void setUp() {
         // Construct NotificationService manually to avoid Java 25 Mockito sealed-class errors
         NotificationService notificationService = new NotificationService(notificationRepository, messagingTemplate);
-        ticketService = new TicketService(ticketRepository, facilityRepository, commentRepository, notificationService);
+        AdminUpdateService adminUpdateService = new AdminUpdateService(
+                mock(SimpMessageSendingOperations.class)
+        );
+        ticketService = new TicketService(
+                ticketRepository,
+                facilityRepository,
+                commentRepository,
+                notificationService,
+                adminUpdateService
+        );
 
         reporter = new User();
         reporter.setId(1L);
@@ -53,11 +64,17 @@ public class TicketServiceTest {
         technician.setName("Tech B");
         technician.setRole(Role.TECHNICIAN);
 
+        admin = new User();
+        admin.setId(3L);
+        admin.setName("Admin");
+        admin.setRole(Role.ADMIN);
+
         openTicket = Ticket.builder()
                 .id(10L)
                 .reporter(reporter)
                 .category("Electrical")
                 .description("Broken projector")
+                .contactDetails("student@example.com")
                 .status(TicketStatus.OPEN)
                 .priority(TicketPriority.HIGH)
                 .build();
@@ -69,7 +86,7 @@ public class TicketServiceTest {
         when(ticketRepository.findById(10L)).thenReturn(Optional.of(openTicket));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Ticket result = ticketService.updateTicketStatus(10L, TicketStatus.IN_PROGRESS, "Working on it");
+        Ticket result = ticketService.updateTicketStatus(10L, admin, TicketStatus.IN_PROGRESS, "Working on it");
 
         assertEquals(TicketStatus.IN_PROGRESS, result.getStatus());
         verify(notificationRepository, times(1)).save(any(Notification.class));
@@ -81,7 +98,7 @@ public class TicketServiceTest {
         when(ticketRepository.findById(10L)).thenReturn(Optional.of(openTicket));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Ticket result = ticketService.updateTicketStatus(10L, TicketStatus.REJECTED, "Duplicate report");
+        Ticket result = ticketService.updateTicketStatus(10L, admin, TicketStatus.REJECTED, "Duplicate report");
 
         assertEquals(TicketStatus.REJECTED, result.getStatus());
         assertEquals("Duplicate report", result.getRejectionReason());
@@ -93,7 +110,7 @@ public class TicketServiceTest {
         when(ticketRepository.findById(10L)).thenReturn(Optional.of(openTicket));
 
         assertThrows(IllegalArgumentException.class,
-                () -> ticketService.updateTicketStatus(10L, TicketStatus.CLOSED, null));
+                () -> ticketService.updateTicketStatus(10L, admin, TicketStatus.CLOSED, null));
     }
 
     @Test
@@ -102,7 +119,7 @@ public class TicketServiceTest {
         when(ticketRepository.findById(10L)).thenReturn(Optional.of(openTicket));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Ticket result = ticketService.assignTicket(10L, technician);
+        Ticket result = ticketService.assignTicket(10L, technician, technician);
 
         assertEquals(technician, result.getAssignedTo());
         assertEquals(TicketStatus.IN_PROGRESS, result.getStatus());
@@ -119,7 +136,7 @@ public class TicketServiceTest {
 
         when(commentRepository.findById(5L)).thenReturn(Optional.of(comment));
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(AccessDeniedException.class,
                 () -> ticketService.deleteComment(5L, otherUser));
         verify(commentRepository, never()).delete(any());
     }

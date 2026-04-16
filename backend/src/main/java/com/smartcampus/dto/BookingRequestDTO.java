@@ -1,6 +1,8 @@
 package com.smartcampus.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -23,6 +25,10 @@ public class BookingRequestDTO {
     @NotNull(message = "End time is required")
     private LocalTime endTime;
 
+    @NotBlank(message = "Purpose is required")
     private String purpose;
+
+    @NotNull(message = "Expected attendees is required")
+    @Positive(message = "Expected attendees must be a positive number")
     private Integer expectedAttendees;
 }

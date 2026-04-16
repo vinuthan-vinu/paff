@@ -1,11 +1,38 @@
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { HiOutlineViewGrid, HiOutlineOfficeBuilding, HiOutlineCalendar, HiOutlineTicket, HiOutlineBell, HiOutlineLogout, HiOutlineCog } from 'react-icons/hi';
+import { useAuth } from '../../context/useAuth';
+import { HiOutlineViewGrid, HiOutlineOfficeBuilding, HiOutlineCalendar, HiOutlineTicket, HiOutlineBell, HiOutlineLogout, HiOutlineShieldCheck } from 'react-icons/hi';
+import { getUnreadCount } from '../../api/notificationApi';
 import './Layout.css';
 
 export default function Sidebar() {
-  const { user, logout, isAdmin, isTechnician } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let intervalId;
+
+    const loadUnreadCount = async () => {
+      try {
+        const response = await getUnreadCount();
+        setUnreadCount(response.data.count ?? 0);
+      } catch {
+        setUnreadCount(0);
+      }
+    };
+
+    if (user) {
+      loadUnreadCount();
+      intervalId = window.setInterval(loadUnreadCount, 10000);
+    }
+
+    return () => {
+      if (intervalId) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -14,6 +41,7 @@ export default function Sidebar() {
 
   const navItems = [
     { path: '/', icon: <HiOutlineViewGrid />, label: 'Dashboard' },
+    ...(isAdmin ? [{ path: '/admin', icon: <HiOutlineShieldCheck />, label: 'Admin' }] : []),
     { path: '/facilities', icon: <HiOutlineOfficeBuilding />, label: 'Facilities' },
     { path: '/bookings', icon: <HiOutlineCalendar />, label: 'Bookings' },
     { path: '/tickets', icon: <HiOutlineTicket />, label: 'Tickets' },
@@ -39,6 +67,9 @@ export default function Sidebar() {
           >
             <span className="sidebar-link-icon">{item.icon}</span>
             <span className="sidebar-link-label">{item.label}</span>
+            {item.path === '/notifications' && unreadCount > 0 && (
+              <span className="sidebar-link-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+            )}
           </NavLink>
         ))}
       </nav>

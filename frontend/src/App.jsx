@@ -5,7 +5,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/Layout/AppLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import AdminPage from './pages/AdminPage';
 import FacilitiesPage from './pages/FacilitiesPage';
+import FacilityDetailPage from './pages/FacilityDetailPage';
 import BookingsPage from './pages/BookingsPage';
 import TicketsPage from './pages/TicketsPage';
 import NotificationsPage from './pages/NotificationsPage';
@@ -36,7 +38,16 @@ export default function App() {
             }
           >
             <Route path="/" element={<DashboardPage />} />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/facilities" element={<FacilitiesPage />} />
+            <Route path="/facilities/:id" element={<FacilityDetailPage />} />
             <Route path="/bookings" element={<BookingsPage />} />
             <Route path="/tickets" element={<TicketsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />

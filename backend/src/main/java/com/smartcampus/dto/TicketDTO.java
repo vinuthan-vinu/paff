@@ -21,5 +21,8 @@ public class TicketDTO {
     @NotBlank(message = "Description is required")
     private String description;
 
+    @NotBlank(message = "Contact details are required")
+    private String contactDetails;
+
     private TicketPriority priority;
 }

@@ -48,7 +48,15 @@ public class BookingServiceTest {
                 mock(com.smartcampus.repository.NotificationRepository.class),
                 mock(org.springframework.messaging.simp.SimpMessageSendingOperations.class)
         );
-        bookingService = new BookingService(bookingRepository, facilityRepository, notificationService);
+        AdminUpdateService adminUpdateService = new AdminUpdateService(
+                mock(org.springframework.messaging.simp.SimpMessageSendingOperations.class)
+        );
+        bookingService = new BookingService(
+                bookingRepository,
+                facilityRepository,
+                notificationService,
+                adminUpdateService
+        );
 
         user = new User();
         user.setId(1L);

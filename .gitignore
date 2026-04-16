@@ -2,3 +2,6 @@ node_modules/
 target/
 .env
 .DS_Store
+frontend/dist/
+backend/uploads/
+smart-campus-project.zip

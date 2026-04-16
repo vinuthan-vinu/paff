@@ -5,17 +5,24 @@ import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.model.Facility;
 import com.smartcampus.model.FacilityStatus;
 import com.smartcampus.model.FacilityType;
+import com.smartcampus.repository.BookingRepository;
 import com.smartcampus.repository.FacilityRepository;
+import com.smartcampus.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class FacilityService {
 
     private final FacilityRepository facilityRepository;
+    private final BookingRepository bookingRepository;
+    private final TicketRepository ticketRepository;
+    private final AdminUpdateService adminUpdateService;
 
     public List<Facility> getAllFacilities() {
         return facilityRepository.findAll();
@@ -27,18 +34,15 @@ public class FacilityService {
     }
 
     public List<Facility> filterFacilities(FacilityType type, FacilityStatus status, String location, Integer minCapacity) {
-        if (type != null && status != null) {
-            return facilityRepository.findByTypeAndStatus(type, status);
-        } else if (type != null) {
-            return facilityRepository.findByType(type);
-        } else if (status != null) {
-            return facilityRepository.findByStatus(status);
-        } else if (location != null) {
-            return facilityRepository.findByLocationContainingIgnoreCase(location);
-        } else if (minCapacity != null) {
-            return facilityRepository.findByCapacityGreaterThanEqual(minCapacity);
-        }
-        return facilityRepository.findAll();
+        String normalizedLocation = location == null ? null : location.trim().toLowerCase(Locale.ROOT);
+
+        return facilityRepository.findAll().stream()
+                .filter(facility -> type == null || facility.getType() == type)
+                .filter(facility -> status == null || facility.getStatus() == status)
+                .filter(facility -> normalizedLocation == null || normalizedLocation.isBlank()
+                        || facility.getLocation().toLowerCase(Locale.ROOT).contains(normalizedLocation))
+                .filter(facility -> minCapacity == null || facility.getCapacity() >= minCapacity)
+                .toList();
     }
 
     public Facility createFacility(FacilityDTO dto) {
@@ -53,7 +57,9 @@ public class FacilityService {
                 .availabilityWindows(dto.getAvailabilityWindows())
                 .build();
 
-        return facilityRepository.save(facility);
+        Facility savedFacility = facilityRepository.save(facility);
+        adminUpdateService.broadcast("RESOURCE", "CREATED", savedFacility.getId());
+        return savedFacility;
     }
 
     public Facility updateFacility(Long id, FacilityDTO dto) {
@@ -68,11 +74,17 @@ public class FacilityService {
         if (dto.getStatus() != null) facility.setStatus(dto.getStatus());
         facility.setAvailabilityWindows(dto.getAvailabilityWindows());
 
-        return facilityRepository.save(facility);
+        Facility updatedFacility = facilityRepository.save(facility);
+        adminUpdateService.broadcast("RESOURCE", "UPDATED", updatedFacility.getId());
+        return updatedFacility;
     }
 
+    @Transactional
     public void deleteFacility(Long id) {
         Facility facility = getFacilityById(id);
+        bookingRepository.deleteAll(bookingRepository.findByFacilityId(id));
+        ticketRepository.deleteAll(ticketRepository.findByFacilityId(id));
         facilityRepository.delete(facility);
+        adminUpdateService.broadcast("RESOURCE", "DELETED", id);
     }
 }
