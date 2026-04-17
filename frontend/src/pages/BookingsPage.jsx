@@ -21,6 +21,8 @@ export default function BookingsPage() {
     facilityId: '', bookingDate: '', startTime: '', endTime: '', purpose: '', expectedAttendees: ''
   });
 
+  const [formError, setFormError] = useState('');
+
   const loadData = useCallback(async (silent = false) => {
     if (!silent) {
       setLoading(true);
@@ -64,8 +66,20 @@ export default function BookingsPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setFormError('');
+
     if (formData.endTime <= formData.startTime) {
-      toast.error('End time must be after start time');
+      const msg = 'End time must be after start time';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    const selectedFac = facilities.find(f => f.id === parseInt(formData.facilityId));
+    if (selectedFac && selectedFac.capacity && parseInt(formData.expectedAttendees) > selectedFac.capacity) {
+      const msg = `Expected attendees cannot exceed facility capacity of ${selectedFac.capacity}`;
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -82,7 +96,9 @@ export default function BookingsPage() {
       });
       loadData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Booking failed');
+      const backendError = err.response?.data?.message || 'Booking failed';
+      setFormError(backendError);
+      toast.error(backendError);
     }
   };
 
@@ -135,6 +151,8 @@ export default function BookingsPage() {
   };
 
   const highlightedBookingId = Number(searchParams.get('booking'));
+  const todayDateString = new Date().toISOString().split('T')[0];
+  const activeFacilitySelected = facilities.find(f => f.id === parseInt(formData.facilityId));
 
   return (
     <div className="page-container">
@@ -143,7 +161,7 @@ export default function BookingsPage() {
           <h1 className="page-title">Bookings</h1>
           <p className="page-subtitle">{isAdmin ? 'Manage all booking requests' : 'Your booking requests'}</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={() => { setFormError(''); setShowModal(true); }}>
           <HiOutlinePlus /> New Booking
         </button>
       </div>
@@ -226,6 +244,13 @@ export default function BookingsPage() {
               <h2 className="modal-title">New Booking</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}><HiOutlineX /></button>
             </div>
+            
+            {formError && (
+              <div style={{ padding: '12px 14px', background: 'rgba(244, 63, 94, 0.1)', border: '1px solid var(--status-error)', borderRadius: 'var(--radius-sm)', color: 'var(--status-error)', fontSize: '0.9rem', marginBottom: 'var(--space-md)' }}>
+                <strong>Validation Error:</strong> {formError}
+              </div>
+            )}
+
             <form onSubmit={handleCreate}>
               <div className="form-group" style={{ position: 'relative' }}>
                 <label className="form-label">Facility</label>
@@ -238,7 +263,7 @@ export default function BookingsPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Date</label>
-                <input className="form-input" type="date" value={formData.bookingDate} onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value })} required />
+                <input className="form-input" type="date" min={todayDateString} value={formData.bookingDate} onChange={(e) => setFormData({ ...formData, bookingDate: e.target.value })} required />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
                 <div className="form-group">
@@ -255,8 +280,23 @@ export default function BookingsPage() {
                 <input className="form-input" value={formData.purpose} onChange={(e) => setFormData({ ...formData, purpose: e.target.value })} placeholder="e.g. Team meeting" required />
               </div>
               <div className="form-group">
-                <label className="form-label">Expected Attendees</label>
-                <input className="form-input" type="number" min="1" value={formData.expectedAttendees} onChange={(e) => setFormData({ ...formData, expectedAttendees: e.target.value })} required />
+                <label className="form-label">
+                  Expected Attendees
+                  {activeFacilitySelected?.capacity && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                      (Max {activeFacilitySelected.capacity})
+                    </span>
+                  )}
+                </label>
+                <input 
+                  className="form-input" 
+                  type="number" 
+                  min="1" 
+                  max={activeFacilitySelected?.capacity || undefined} 
+                  value={formData.expectedAttendees} 
+                  onChange={(e) => setFormData({ ...formData, expectedAttendees: e.target.value })} 
+                  required 
+                />
               </div>
               <button className="btn btn-primary btn-lg" style={{ width: '100%' }} type="submit">Submit Booking</button>
             </form>

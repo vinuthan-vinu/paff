@@ -39,20 +39,19 @@ public class BookingService {
             throw new IllegalArgumentException("End time must be after start time");
         }
 
-        // Validate availability windows (format: "08:00-17:00")
+        // Validate availability windows (e.g., "Mon-Fri 08:00-18:00")
         String availability = facility.getAvailabilityWindows();
         if (availability != null && !availability.isBlank()) {
-            try {
-                String[] parts = availability.split("-");
-                if (parts.length == 2) {
-                    java.time.LocalTime windowStart = java.time.LocalTime.parse(parts[0].trim());
-                    java.time.LocalTime windowEnd = java.time.LocalTime.parse(parts[1].trim());
-                    if (dto.getStartTime().isBefore(windowStart) || dto.getEndTime().isAfter(windowEnd)) {
-                        throw new IllegalArgumentException("Booking time must be within facility availability window: " + availability);
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore parse errors if the window string is malformed
+            boolean isValid = validateAvailability(dto.getBookingDate(), dto.getStartTime(), dto.getEndTime(), availability);
+            if (!isValid) {
+                throw new IllegalArgumentException("You cannot book at this time slot or on this day. Schedule: " + availability);
+            }
+        }
+
+        // Validate capacity
+        if (dto.getExpectedAttendees() != null && facility.getCapacity() != null) {
+            if (dto.getExpectedAttendees() > facility.getCapacity()) {
+                throw new IllegalArgumentException("Expected attendees (" + dto.getExpectedAttendees() + ") exceeds facility capacity (" + facility.getCapacity() + ")");
             }
         }
 
@@ -81,7 +80,7 @@ public class BookingService {
         notificationService.notifyAdmins(
                 "New Booking Request",
                 user.getName() + " requested " + facility.getName() + " for " + dto.getBookingDate(),
-                NotificationType.SYSTEM_ALERT,
+                NotificationType.TICKET_UPDATE,
                 "/admin"
         );
         
@@ -186,6 +185,49 @@ public class BookingService {
     }
 
     // --- Helper Methods ---
+    
+    private boolean validateAvailability(java.time.LocalDate date, java.time.LocalTime startTime, java.time.LocalTime endTime, String availability) {
+        String dayOfWeek = date.getDayOfWeek().name().substring(0, 3).toUpperCase(); // e.g., "MON"
+        String[] blocks = availability.split(",");
+        
+        for (String blockStr : blocks) {
+            String block = blockStr.trim().toUpperCase();
+            
+            // Check day
+            boolean dayMatch = false;
+            if (block.contains("MON-FRI") || block.contains("WEEKDAYS")) {
+                if (dayOfWeek.equals("MON") || dayOfWeek.equals("TUE") || dayOfWeek.equals("WED") || dayOfWeek.equals("THU") || dayOfWeek.equals("FRI")) dayMatch = true;
+            } else if (block.contains("MON-SAT")) {
+                if (!dayOfWeek.equals("SUN")) dayMatch = true;
+            } else if (block.contains("WEEKENDS")) {
+                if (dayOfWeek.equals("SAT") || dayOfWeek.equals("SUN")) dayMatch = true;
+            } else if (block.contains(dayOfWeek)) {
+                dayMatch = true;
+            } else if (!block.matches(".*(MON|TUE|WED|THU|FRI|SAT|SUN).*")) {
+                // If it doesn't specify any days, we assume it matches every day for this block
+                dayMatch = true;
+            }
+            
+            if (dayMatch) {
+                // Check time
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{1,2}:\\d{2})\\s*-\\s*(\\d{1,2}:\\d{2})").matcher(block);
+                if (m.find()) {
+                    String s1 = m.group(1);
+                    String s2 = m.group(2);
+                    java.time.LocalTime wStart = java.time.LocalTime.parse(s1.length() == 4 ? "0" + s1 : s1);
+                    java.time.LocalTime wEnd = java.time.LocalTime.parse(s2.length() == 4 ? "0" + s2 : s2);
+                    // the booking start time MUST NOT be before window start, and MUST be before window end (we assume a booking takes time).
+                    // the booking end time MUST NOT be after window end.
+                    if (!startTime.isBefore(wStart) && !endTime.isAfter(wEnd)) {
+                        return true;
+                    }
+                } else {
+                    return true; // No time constraints found in this block, so day match is enough
+                }
+            }
+        }
+        return false;
+    }
 
     private Booking findBookingOrThrow(Long id) {
         return bookingRepository.findById(id)
