@@ -49,6 +49,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/facilities/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/resources/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                .requestMatchers("/api/notifications/debug-all", "/api/notifications/debug-users").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 // Admin-only endpoints
                 .requestMatchers(HttpMethod.POST, "/api/facilities/**").hasRole("ADMIN")
