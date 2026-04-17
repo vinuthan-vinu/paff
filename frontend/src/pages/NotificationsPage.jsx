@@ -1,23 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getNotifications, markAsRead } from '../api/notificationApi';
 import { HiOutlineBell, HiOutlineChevronRight } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/useAuth';
+import { useUserNotifications } from '../hooks/useUserNotifications';
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  useEffect(() => { loadNotifications(); }, []);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await getNotifications();
       setNotifications(res.data);
-    } catch { toast.error('Failed to load notifications'); }
-    finally { setLoading(false); }
-  };
+    } catch { 
+      toast.error('Failed to load notifications'); 
+    } finally { 
+      setLoading(false); 
+    }
+  }, []);
+
+  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+
+  useUserNotifications(user, () => {
+    loadNotifications(true);
+  });
 
   const handleOpenNotification = async (notification) => {
     try {

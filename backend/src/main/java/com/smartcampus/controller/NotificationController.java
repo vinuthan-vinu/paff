@@ -20,7 +20,10 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<List<Notification>> getNotifications(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(notificationService.getUserNotifications(user.getId()));
+        System.out.println("Fetching notifications for user ID: " + user.getId() + " Role: " + user.getRole());
+        List<Notification> notifs = notificationService.getUserNotifications(user.getId());
+        System.out.println("Found " + notifs.size() + " notifications for user ID " + user.getId());
+        return ResponseEntity.ok(notifs);
     }
 
     @GetMapping("/unread")
@@ -37,5 +40,26 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     public ResponseEntity<Notification> markAsRead(@PathVariable Long id, @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(notificationService.markAsRead(id, user));
+    }
+
+    private final com.smartcampus.repository.NotificationRepository notificationRepository;
+
+    @GetMapping("/debug-all")
+    public ResponseEntity<List<Notification>> debugAll() {
+        return ResponseEntity.ok(notificationRepository.findAll());
+    }
+
+    private final com.smartcampus.repository.UserRepository userRepository;
+
+    @GetMapping("/debug-users")
+    public ResponseEntity<List<Map<String, Object>>> debugUsers() {
+        return ResponseEntity.ok(userRepository.findAll().stream().map(u -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", u.getId());
+            map.put("name", u.getName());
+            map.put("email", u.getEmail());
+            map.put("role", u.getRole() != null ? u.getRole().name() : "NULL");
+            return map;
+        }).toList());
     }
 }

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { HiOutlineViewGrid, HiOutlineOfficeBuilding, HiOutlineCalendar, HiOutlineTicket, HiOutlineBell, HiOutlineLogout, HiOutlineShieldCheck } from 'react-icons/hi';
 import { getUnreadCount } from '../../api/notificationApi';
+import { useUserNotifications } from '../../hooks/useUserNotifications';
 import './Layout.css';
 
 export default function Sidebar() {
@@ -10,29 +11,29 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const response = await getUnreadCount();
+      setUnreadCount(response.data.count ?? 0);
+    } catch {
+      setUnreadCount(0);
+    }
+  }, []);
+
+  useUserNotifications(user, () => {
+    loadUnreadCount();
+  });
+
   useEffect(() => {
     let intervalId;
-
-    const loadUnreadCount = async () => {
-      try {
-        const response = await getUnreadCount();
-        setUnreadCount(response.data.count ?? 0);
-      } catch {
-        setUnreadCount(0);
-      }
-    };
-
     if (user) {
       loadUnreadCount();
       intervalId = window.setInterval(loadUnreadCount, 10000);
     }
-
     return () => {
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
+      if (intervalId) window.clearInterval(intervalId);
     };
-  }, [user]);
+  }, [user, loadUnreadCount]);
 
   const handleLogout = () => {
     logout();

@@ -37,9 +37,8 @@ public class NotificationService {
         notification = notificationRepository.save(notification);
 
         // Send real-time notification via WebSocket
-        messagingTemplate.convertAndSendToUser(
-                user.getId().toString(),
-                "/queue/notifications",
+        messagingTemplate.convertAndSend(
+                "/topic/notifications." + user.getId(),
                 notification
         );
 
